@@ -135,6 +135,7 @@ Audapter::Audapter() :
 	params.addBoolParam("bdownsampfilt", "Down-sampling filter switch");
 	params.addBoolParam("mute", "Global mute switch");
 	params.addBoolParam("bpvocmpnorm", "Phase vocoder amplitude normalization switch");
+	params.addBoolParam("eqfilter", "Equalization filter for playback");
 
 	/* Integer parameters */
 	params.addIntParam("srate", "Sampling rate (Hz), after downsampling");
@@ -203,6 +204,8 @@ Audapter::Audapter() :
 	params.addDoubleArrayParam("pertamp", "Formant perturbation field: Perturbation vector amplitude");
 	params.addDoubleArrayParam("pertphi", "Formant perturbation field: Perturbation vector angle");
 	params.addDoubleArrayParam("gain", "Global intensity gain");
+	params.addDoubleArrayParam("eqfilter_a", "Equalization filter for playback");
+	params.addDoubleArrayParam("eqfilter_b", "Equalization filter for playback");
 
 	params.addDoubleArrayParam("tsgtonedur", "Tone sequence generator: tone durations (s)");
 	params.addDoubleArrayParam("tsgtonefreq", "Tone sequence generator: tone frequencies (Hz)");
@@ -262,6 +265,7 @@ Audapter::Audapter() :
 
 	// RMS
 	p.dRMSThresh		= 0.02;	// RMS threshhold for voicing detection
+	p.dRMSThreshTime	= 0.0;	// minimum-time that RMS needs to be above threshhold for voicing detection
 	p.dRMSRatioThresh	= 1.3;	// preemp / original RMS ratio threshhold, for fricative detection 
 	p.rmsFF				= 0.9;  // rms forgetting factor for long time rms 
 
@@ -310,6 +314,7 @@ Audapter::Audapter() :
 	p.bRelative			= 1;	// shift relative to actual formant point, (otherwise absolute coordinate)			
 	p.bWeight			= 1;	// do weighted moving average formant smoothing (over avglen) , otherwise not weigthed (= simple moving average)				
 	p.bCepsLift			= 0;	//SC-Mod(2008/05/15) Do cepstral lifting by default
+    p.eqfilter          = 0;    // equalization filter for playback
 
 	// Parameters related to the real-time pitch tracker.
 	p.bTimeDomainShift  = 0;		
@@ -472,8 +477,14 @@ Audapter::Audapter() :
 											 0.005985366448016846500000};
 
 	downSampFilter.setCoeff(nCoeffsSRFilt, t_srfilt_a, nCoeffsSRFilt, t_srfilt_b);
-	upSampFilter.setCoeff(nCoeffsSRFilt, t_srfilt_a, nCoeffsSRFilt, t_srfilt_b);
+    if (p.eqfilter)
+	   upSampFilter.setCoeff(nCoeffsSRFilt, p.eqfilter_a, nCoeffsSRFilt, p.eqfilter_b);
+    else
+	   upSampFilter.setCoeff(nCoeffsSRFilt, t_srfilt_a, nCoeffsSRFilt, t_srfilt_b);
+    
 
+
+    
 	//SC(2009/02/06) RMS level clipping protection. 
 	p.bRMSClip = 1;
 	p.rmsClipThresh = 1.0;
@@ -850,6 +861,9 @@ void *Audapter::setGetParam(bool bSet,
 	else if (ns == string("rmsthr")) {
 		ptr = (void *)&p.dRMSThresh;
 	}
+    else if (ns == string("rmsthrtime")) {
+		ptr = (void *)&p.dRMSThreshTime;
+	}
 	else if (ns == string("rmsratio")) {
 		ptr = (void *)&p.dRMSRatioThresh;
 	}
@@ -899,6 +913,17 @@ void *Audapter::setGetParam(bool bSet,
 	else if (ns == string("pertphi")) {
 		ptr = (void *)p.pertPhi;
 		len = pfNPoints;
+	}
+    else if (ns == string("eqfilter")) {
+		ptr = (void *)&p.eqfilter;
+	}
+	else if (ns == string("eqfilter_a")) {
+		ptr = (void *)p.eqfilter_a;
+        len = nCoeffsSRFilt; // note (21 "a" filter coefficients, standard filter form a*y=b*x; it should include low-pass [0-8KHz] filter for upsampling)
+	}
+	else if (ns == string("eqfilter_b")) {
+		ptr = (void *)p.eqfilter_b;
+        len = nCoeffsSRFilt; // note (21 "b" filter coefficients, standard filter form a*y=b*x; it should include low-pass [0-8KHz] filter for upsampling)
 	}
 	else if (ns == string("f1min")) {
 		ptr = (void *)&p.F1Min;
