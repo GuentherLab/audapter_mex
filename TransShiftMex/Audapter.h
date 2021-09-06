@@ -231,6 +231,8 @@ private:
 	dtype ma_rms1;			// moving average rms 
 	dtype ma_rms2;	
 	dtype ma_rms_fb;		// moving average rms for feedback mode 4
+    dtype ma_time;          //minimum-time moving average above threshold
+    bool ma_above_rms;         //moving average above threshold (only changes that last above ma_rms_timeabove are considered here)
 
 	//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  BUFFERS  *****************************************************%%%%%%%%%%%	
 
