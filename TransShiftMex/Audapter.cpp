@@ -166,6 +166,7 @@ Audapter::Audapter() :
 	params.addDoubleParam("rmsthr", "RMS intensity threshold");
 	params.addDoubleParam("rmsratio", "RMS ratio threshold");
 	params.addDoubleParam("rmsff", "Forgetting factor for RMS intensity smoothing");
+	params.addDoubleParam("rmsthrtime", "RMS intensity minimum-time threshold"); // note: currently this only applies to time-domain pitch shift (p.bTimeDomainShift)
 	params.addDoubleParam("dfmtsff", "Forgetting factor for formant smoothing (in status tracking)");	//
 	params.addDoubleParam("rmsclipthresh", "Auto RMS intensity clipping threshold (loudness protection)");	//
 
@@ -611,6 +612,9 @@ void Audapter::reset()
 	ma_rms1 = 0;
 	ma_rms2 = 0;	
 	ma_rms_fb = 0;
+    ma_rms_timeabove = 0;
+    ma_time = 0;
+    ma_above_rms = false;
 
 //*****************************************************  getWma    *****************************************************
 	//SC(2009/02/02)
@@ -1615,7 +1619,15 @@ int Audapter::handleBuffer(dtype *inFrame_ptr, dtype *outFrame_ptr, int frame_si
 		else{
 			above_rms = isabove(rms_s, p.dRMSThresh) && isabove(rms_ratio, p.dRMSRatioThresh);
 		}
-
+        
+        if (above_rms != ma_above_rms) {
+            ma_time += time_step;
+            if (ma_time > p.dRMSThreshTime)
+                ma_above_rms = above_rms; // note: ma_above_rms just like above_rms but disregarding short/spurious transitions (above p.dRMSThreshTime; if p.dRMSThreshTime=0 ma_above_rms is identical to above_rms)
+        }
+        if (above_rms == ma_above_rms)
+            ma_time = 0.0;
+        
 		if (above_rms) {
             if (p.bWeight) {  //SC bWeight: weighted moving averaging of the formants //Marked
                 wei = rms_o; // weighted moving average over short time rms
@@ -1748,7 +1760,7 @@ int Audapter::handleBuffer(dtype *inFrame_ptr, dtype *outFrame_ptr, int frame_si
 			}
 		}
 
-        if (above_rms && p.bTimeDomainShift) {
+        if (ma_above_rms && p.bTimeDomainShift) {
             f0BandpassFilter(
                 pBuf + (p.nDelay - 1) * p.frameLen + si, f0Buf + si, fmtTracker->getLatestPitchHz(),
                 static_cast<dtype>(p.sr), p.frameShift);
@@ -1954,7 +1966,7 @@ int Audapter::handleBuffer(dtype *inFrame_ptr, dtype *outFrame_ptr, int frame_si
 	offs++;
 	if (p.bTimeDomainShift) {
 	    data_recorder[offs][data_counter] = fmtTracker->getLatestPitchHz();
-        if (above_rms) {
+        if (ma_above_rms) {
             offs++;
             data_recorder[offs][data_counter] = timeDomainShifter->getLatestShiftedPitchHz();
         }
