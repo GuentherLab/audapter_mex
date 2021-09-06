@@ -224,6 +224,8 @@ private:
 	dtype ma_rms1;			// moving average rms 
 	dtype ma_rms2;	
 	dtype ma_rms_fb;		// moving average rms for feedback mode 4
+    dtype ma_time;          //minimum-time moving average above threshold
+    bool ma_above_rms;         //moving average above threshold (only changes that last above ma_rms_timeabove are considered here)
 
 	//%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%  BUFFERS  *****************************************************%%%%%%%%%%%	
 
@@ -370,6 +372,7 @@ private:
 		int    nFmts;					// originally the number of formants you want shift ( hardseted = 2)
 
 		dtype dRMSThresh;				// RMS threshhold for voicing detection
+		dtype dRMSThreshTime;           // minimum-time that RMS needs to be above threshhold for voicing detection
 		dtype dRMSRatioThresh;			// preemp / original RMS ratio threshhold, for fricative detection 
 		dtype rmsFF;                   // rms fogetting factor for long time rms 
 		dtype rmsFF_fb[4];             // rms fogetting factor for fb mode 4 {ff_onset, ff_final, trans_time (s), ending time (s)} 
@@ -419,6 +422,7 @@ private:
 		int    bRelative;				// shift relative to actual formant point, (otherwise absolute coordinate)			
 		int    bWeight;					// do weighted moving average formant smoothing (over pitchlen) , otherwise not weigthed (= simple moving average)				
 		int	   bCepsLift;				//SC-Mod(2008/05/15) Whether the cepstral lifting is done before the autocorrelation
+		int    eqfilter;                // use playback equalization filter
 
 		// Parameters related to the pitch tracker.
 		int    bTimeDomainShift;
@@ -454,6 +458,8 @@ private:
 		dtype pertPhi[pfNPoints];
 		dtype pertAmp[pfNPoints];
 		dtype minVowelLen;
+        dtype eqfilter_a[nCoeffsSRFilt];
+        dtype eqfilter_b[nCoeffsSRFilt];
 		
 		bool transDone;
 
