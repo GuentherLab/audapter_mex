@@ -636,7 +636,6 @@ void Audapter::reset()
 	ma_rms1 = 0;
 	ma_rms2 = 0;	
 	ma_rms_fb = 0;
-    ma_rms_timeabove = 0;
     ma_time = 0;
     ma_above_rms = false;
 
