@@ -1349,7 +1349,7 @@ void *Audapter::setGetParam(bool bSet,
 		} else if ((ns == string("eqfilter_a")) || (ns == string("eqfilter_b")) || (ns == string("eqfilter"))) {
             if (p.eqfilter)
                 upSampFilter.setCoeff(nCoeffsSRFilt, p.eqfilter_a, nCoeffsSRFilt, p.eqfilter_b);
-            else
+            else {
                 const dtype t_srfilt_a[nCoeffsSRFilt] = {1.000000000000000000000000, -4.137689759094149300000000, 11.417342955970334000000000, -21.230389508442666000000000,
                 31.507204607241498000000000, -36.677292780605917000000000, 36.042584528469732000000000, -28.996821243768743000000000,
                 20.262367357856544000000000, -11.637468104552259000000000, 5.968975493498319000000000, -2.417954280896708500000000,
@@ -1363,6 +1363,7 @@ void *Audapter::setGetParam(bool bSet,
                 0.072946803942075533000000, 0.014963399494903067000000, 0.029926833561855826000000, -0.000000000068663525932820,
                 0.005985366448016846500000};
                 upSampFilter.setCoeff(nCoeffsSRFilt, t_srfilt_a, nCoeffsSRFilt, t_srfilt_b);
+            }
 		}
 
 		p.frameShift	= p.frameLen / p.nWin;
