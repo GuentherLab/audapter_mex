@@ -501,7 +501,8 @@ private:
 		int    bRelative;				// shift relative to actual formant point, (otherwise absolute coordinate)			
 		int    bWeight;					// do weighted moving average formant smoothing (over pitchlen) , otherwise not weigthed (= simple moving average)				
 		int	   bCepsLift;				//SC-Mod(2008/05/15) Whether the cepstral lifting is done before the autocorrelation
-		int    eqfilter;                // use playback equalization filter
+		int    eqfilterinput;           // use microphone equalization filter
+		int    eqfilteroutput;          // use playback equalization filter
 
 		int	   bRatioShift;				//SC(2009/01/20). 
 		int	   bMelShift;				//SC(2009/01/20). 
@@ -532,8 +533,10 @@ private:
 		mytype pertPhi[PF_NPOINTS];
 		mytype pertAmp[PF_NPOINTS];
 		mytype minVowelLen;
-        mytype eqfilter_a[N_COEFFS_SRFILT];
-        mytype eqfilter_b[N_COEFFS_SRFILT];
+        mytype eqfilterinput_a[N_COEFFS_SRFILT];
+        mytype eqfilterinput_b[N_COEFFS_SRFILT];
+        mytype eqfilteroutput_a[N_COEFFS_SRFILT];
+        mytype eqfilteroutput_b[N_COEFFS_SRFILT];
 		
 		bool transDone;
 
