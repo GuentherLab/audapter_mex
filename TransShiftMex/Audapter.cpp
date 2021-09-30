@@ -1284,7 +1284,7 @@ void *Audapter::setGetParam(bool bSet,
 		} else if (ns == string("preemp")) {
 			initializePreEmpFilter();
 		} else if ((ns == string("eqfilterinput_a")) || (ns == string("eqfilterinput_b")) || (ns == string("eqfilterinput"))) {
-            if (p.eqfilterintput)
+            if (p.eqfilterinput)
                 downSampFilter.setCoeff(nCoeffsSRFilt, p.eqfilterinput_a, nCoeffsSRFilt, p.eqfilterinput_b);
             else {
                 const dtype t_srfilt_a[nCoeffsSRFilt] = {1.000000000000000000000000, -4.137689759094149300000000, 11.417342955970334000000000, -21.230389508442666000000000,
@@ -1302,7 +1302,7 @@ void *Audapter::setGetParam(bool bSet,
                 downSampFilter.setCoeff(nCoeffsSRFilt, t_srfilt_a, nCoeffsSRFilt, t_srfilt_b);
             }
 		} else if ((ns == string("eqfilteroutput_a")) || (ns == string("eqfilteroutput_b")) || (ns == string("eqfilteroutput"))) {
-            if (p.eqfilterintput)
+            if (p.eqfilteroutput)
                 upSampFilter.setCoeff(nCoeffsSRFilt, p.eqfilteroutput_a, nCoeffsSRFilt, p.eqfilteroutput_b);
             else {
                 const dtype t_srfilt_a[nCoeffsSRFilt] = {1.000000000000000000000000, -4.137689759094149300000000, 11.417342955970334000000000, -21.230389508442666000000000,
