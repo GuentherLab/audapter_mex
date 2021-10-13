@@ -135,6 +135,8 @@ Audapter::Audapter() :
 	params.addBoolParam("bdownsampfilt", "Down-sampling filter switch");
 	params.addBoolParam("mute", "Global mute switch");
 	params.addBoolParam("bpvocmpnorm", "Phase vocoder amplitude normalization switch");
+	params.addBoolParam("eqfilteroutput", "Equalization filter for output/playback");
+	params.addBoolParam("eqfilterinput", "Equalization filter for input/microphone");
 
 	/* Integer parameters */
 	params.addIntParam("srate", "Sampling rate (Hz), after downsampling");
@@ -165,6 +167,7 @@ Audapter::Audapter() :
 	params.addDoubleParam("rmsthr", "RMS intensity threshold");
 	params.addDoubleParam("rmsratio", "RMS ratio threshold");
 	params.addDoubleParam("rmsff", "Forgetting factor for RMS intensity smoothing");
+	params.addDoubleParam("rmsthrtime", "RMS intensity minimum-time threshold"); // note: currently this only applies to time-domain pitch shift (p.bTimeDomainShift)
 	params.addDoubleParam("dfmtsff", "Forgetting factor for formant smoothing (in status tracking)");	//
 	params.addDoubleParam("rmsclipthresh", "Auto RMS intensity clipping threshold (loudness protection)");	//
 
@@ -203,6 +206,10 @@ Audapter::Audapter() :
 	params.addDoubleArrayParam("pertamp", "Formant perturbation field: Perturbation vector amplitude");
 	params.addDoubleArrayParam("pertphi", "Formant perturbation field: Perturbation vector angle");
 	params.addDoubleArrayParam("gain", "Global intensity gain");
+	params.addDoubleArrayParam("eqfilterinput_a", "Equalization filter for microphone");
+	params.addDoubleArrayParam("eqfilterinput_b", "Equalization filter for microphone");
+	params.addDoubleArrayParam("eqfilteroutput_a", "Equalization filter for playback");
+	params.addDoubleArrayParam("eqfilteroutput_b", "Equalization filter for playback");
 
 	params.addDoubleArrayParam("tsgtonedur", "Tone sequence generator: tone durations (s)");
 	params.addDoubleArrayParam("tsgtonefreq", "Tone sequence generator: tone frequencies (Hz)");
@@ -262,6 +269,7 @@ Audapter::Audapter() :
 
 	// RMS
 	p.dRMSThresh		= 0.02;	// RMS threshhold for voicing detection
+	p.dRMSThreshTime	= 0.0;	// minimum-time that RMS needs to be above threshhold for voicing detection
 	p.dRMSRatioThresh	= 1.3;	// preemp / original RMS ratio threshhold, for fricative detection 
 	p.rmsFF				= 0.9;  // rms forgetting factor for long time rms 
 
@@ -310,6 +318,8 @@ Audapter::Audapter() :
 	p.bRelative			= 1;	// shift relative to actual formant point, (otherwise absolute coordinate)			
 	p.bWeight			= 1;	// do weighted moving average formant smoothing (over avglen) , otherwise not weigthed (= simple moving average)				
 	p.bCepsLift			= 0;	//SC-Mod(2008/05/15) Do cepstral lifting by default
+    p.eqfilterinput     = 0;    // equalization filter for microphone
+    p.eqfilteroutput    = 0;    // equalization filter for playback
 
 	// Parameters related to the real-time pitch tracker.
 	p.bTimeDomainShift  = 0;		
@@ -471,9 +481,18 @@ Audapter::Audapter() :
 											 0.072946803942075533000000, 0.014963399494903067000000, 0.029926833561855826000000, -0.000000000068663525932820, 
 											 0.005985366448016846500000};
 
-	downSampFilter.setCoeff(nCoeffsSRFilt, t_srfilt_a, nCoeffsSRFilt, t_srfilt_b);
-	upSampFilter.setCoeff(nCoeffsSRFilt, t_srfilt_a, nCoeffsSRFilt, t_srfilt_b);
+    if (p.eqfilterinput)
+	   downSampFilter.setCoeff(nCoeffsSRFilt, p.eqfilterinput_a, nCoeffsSRFilt, p.eqfilterinput_b);
+    else
+	   downSampFilter.setCoeff(nCoeffsSRFilt, t_srfilt_a, nCoeffsSRFilt, t_srfilt_b);
+    if (p.eqfilteroutput)
+	   upSampFilter.setCoeff(nCoeffsSRFilt, p.eqfilteroutput_a, nCoeffsSRFilt, p.eqfilteroutput_b);
+    else
+	   upSampFilter.setCoeff(nCoeffsSRFilt, t_srfilt_a, nCoeffsSRFilt, t_srfilt_b);
+    
 
+
+    
 	//SC(2009/02/06) RMS level clipping protection. 
 	p.bRMSClip = 1;
 	p.rmsClipThresh = 1.0;
@@ -600,6 +619,8 @@ void Audapter::reset()
 	ma_rms1 = 0;
 	ma_rms2 = 0;	
 	ma_rms_fb = 0;
+    ma_time = 0;
+    ma_above_rms = false;
 
 //*****************************************************  getWma    *****************************************************
 	//SC(2009/02/02)
@@ -850,6 +871,9 @@ void *Audapter::setGetParam(bool bSet,
 	else if (ns == string("rmsthr")) {
 		ptr = (void *)&p.dRMSThresh;
 	}
+    else if (ns == string("rmsthrtime")) {
+		ptr = (void *)&p.dRMSThreshTime;
+	}
 	else if (ns == string("rmsratio")) {
 		ptr = (void *)&p.dRMSRatioThresh;
 	}
@@ -899,6 +923,28 @@ void *Audapter::setGetParam(bool bSet,
 	else if (ns == string("pertphi")) {
 		ptr = (void *)p.pertPhi;
 		len = pfNPoints;
+	}
+    else if (ns == string("eqfilterinput")) {
+		ptr = (void *)&p.eqfilterinput;
+	}
+    else if (ns == string("eqfilteroutput")) {
+		ptr = (void *)&p.eqfilteroutput;
+	}
+	else if (ns == string("eqfilterinput_a")) {
+		ptr = (void *)p.eqfilterinput_a;
+        len = nCoeffsSRFilt; // note (21 "a" filter coefficients, standard filter form a*y=b*x; it should include low-pass [0-8KHz] filter for upsampling)
+	}
+	else if (ns == string("eqfilterinput_b")) {
+		ptr = (void *)p.eqfilterinput_b;
+        len = nCoeffsSRFilt; // note (21 "b" filter coefficients, standard filter form a*y=b*x; it should include low-pass [0-8KHz] filter for upsampling)
+	}
+	else if (ns == string("eqfilteroutput_a")) {
+		ptr = (void *)p.eqfilteroutput_a;
+        len = nCoeffsSRFilt; // note (21 "a" filter coefficients, standard filter form a*y=b*x; it should include low-pass [0-8KHz] filter for upsampling)
+	}
+	else if (ns == string("eqfilteroutput_b")) {
+		ptr = (void *)p.eqfilteroutput_b;
+        len = nCoeffsSRFilt; // note (21 "b" filter coefficients, standard filter form a*y=b*x; it should include low-pass [0-8KHz] filter for upsampling)
 	}
 	else if (ns == string("f1min")) {
 		ptr = (void *)&p.F1Min;
@@ -1237,6 +1283,42 @@ void *Audapter::setGetParam(bool bSet,
 			p.fb4Gain		= pow(10.0, p.fb4GainDB / 20);
 		} else if (ns == string("preemp")) {
 			initializePreEmpFilter();
+		} else if ((ns == string("eqfilterinput_a")) || (ns == string("eqfilterinput_b")) || (ns == string("eqfilterinput"))) {
+            if (p.eqfilterinput)
+                downSampFilter.setCoeff(nCoeffsSRFilt, p.eqfilterinput_a, nCoeffsSRFilt, p.eqfilterinput_b);
+            else {
+                const dtype t_srfilt_a[nCoeffsSRFilt] = {1.000000000000000000000000, -4.137689759094149300000000, 11.417342955970334000000000, -21.230389508442666000000000,
+                31.507204607241498000000000, -36.677292780605917000000000, 36.042584528469732000000000, -28.996821243768743000000000,
+                20.262367357856544000000000, -11.637468104552259000000000, 5.968975493498319000000000, -2.417954280896708500000000,
+                0.941027354810217260000000, -0.241109659478893040000000, 0.083935453370180629000000, -0.005511361553189712100000,
+                0.006142808678570149300000, 0.001292100725808184000000, 0.000588047191250507470000, 0.000146757274221299580000,
+                0.000035865709068928935000};
+                const dtype t_srfilt_b[nCoeffsSRFilt] = {0.005985366448016847400000, -0.000000000068663473436596, 0.029926833561855812000000, 0.014963399494903253000000,
+                0.072946803942075492000000, 0.066399110082245749000000, 0.128831523706446540000000, 0.141307195958322970000000,
+                0.183515087779119460000000, 0.196038702055692930000000, 0.207578586483177310000000, 0.196038702055692630000000,
+                0.183515087779119760000000, 0.141307195958322280000000, 0.128831523706446790000000, 0.066399110082245277000000,
+                0.072946803942075533000000, 0.014963399494903067000000, 0.029926833561855826000000, -0.000000000068663525932820,
+                0.005985366448016846500000};
+                downSampFilter.setCoeff(nCoeffsSRFilt, t_srfilt_a, nCoeffsSRFilt, t_srfilt_b);
+            }
+		} else if ((ns == string("eqfilteroutput_a")) || (ns == string("eqfilteroutput_b")) || (ns == string("eqfilteroutput"))) {
+            if (p.eqfilteroutput)
+                upSampFilter.setCoeff(nCoeffsSRFilt, p.eqfilteroutput_a, nCoeffsSRFilt, p.eqfilteroutput_b);
+            else {
+                const dtype t_srfilt_a[nCoeffsSRFilt] = {1.000000000000000000000000, -4.137689759094149300000000, 11.417342955970334000000000, -21.230389508442666000000000,
+                31.507204607241498000000000, -36.677292780605917000000000, 36.042584528469732000000000, -28.996821243768743000000000,
+                20.262367357856544000000000, -11.637468104552259000000000, 5.968975493498319000000000, -2.417954280896708500000000,
+                0.941027354810217260000000, -0.241109659478893040000000, 0.083935453370180629000000, -0.005511361553189712100000,
+                0.006142808678570149300000, 0.001292100725808184000000, 0.000588047191250507470000, 0.000146757274221299580000,
+                0.000035865709068928935000};
+                const dtype t_srfilt_b[nCoeffsSRFilt] = {0.005985366448016847400000, -0.000000000068663473436596, 0.029926833561855812000000, 0.014963399494903253000000,
+                0.072946803942075492000000, 0.066399110082245749000000, 0.128831523706446540000000, 0.141307195958322970000000,
+                0.183515087779119460000000, 0.196038702055692930000000, 0.207578586483177310000000, 0.196038702055692630000000,
+                0.183515087779119760000000, 0.141307195958322280000000, 0.128831523706446790000000, 0.066399110082245277000000,
+                0.072946803942075533000000, 0.014963399494903067000000, 0.029926833561855826000000, -0.000000000068663525932820,
+                0.005985366448016846500000};
+                upSampFilter.setCoeff(nCoeffsSRFilt, t_srfilt_a, nCoeffsSRFilt, t_srfilt_b);
+            }
 		}
 
 		p.frameShift	= p.frameLen / p.nWin;
@@ -1590,7 +1672,15 @@ int Audapter::handleBuffer(dtype *inFrame_ptr, dtype *outFrame_ptr, int frame_si
 		else{
 			above_rms = isabove(rms_s, p.dRMSThresh) && isabove(rms_ratio, p.dRMSRatioThresh);
 		}
-
+        
+        if (above_rms != ma_above_rms) {
+            ma_time += time_step;
+            if (ma_time > p.dRMSThreshTime)
+                ma_above_rms = above_rms; // note: ma_above_rms just like above_rms but disregarding short/spurious transitions (above p.dRMSThreshTime; if p.dRMSThreshTime=0 ma_above_rms is identical to above_rms)
+        }
+        if (above_rms == ma_above_rms)
+            ma_time = 0.0;
+        
 		if (above_rms) {
             if (p.bWeight) {  //SC bWeight: weighted moving averaging of the formants //Marked
                 wei = rms_o; // weighted moving average over short time rms
@@ -1723,7 +1813,7 @@ int Audapter::handleBuffer(dtype *inFrame_ptr, dtype *outFrame_ptr, int frame_si
 			}
 		}
 
-        if (above_rms && p.bTimeDomainShift) {
+        if (ma_above_rms && p.bTimeDomainShift) {
             f0BandpassFilter(
                 pBuf + (p.nDelay - 1) * p.frameLen + si, f0Buf + si, fmtTracker->getLatestPitchHz(),
                 static_cast<dtype>(p.sr), p.frameShift);
@@ -1929,7 +2019,7 @@ int Audapter::handleBuffer(dtype *inFrame_ptr, dtype *outFrame_ptr, int frame_si
 	offs++;
 	if (p.bTimeDomainShift) {
 	    data_recorder[offs][data_counter] = fmtTracker->getLatestPitchHz();
-        if (above_rms) {
+        if (ma_above_rms) {
             offs++;
             data_recorder[offs][data_counter] = timeDomainShifter->getLatestShiftedPitchHz();
         }
