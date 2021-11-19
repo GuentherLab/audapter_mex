@@ -1813,12 +1813,12 @@ int Audapter::handleBuffer(dtype *inFrame_ptr, dtype *outFrame_ptr, int frame_si
 			}
 		}
 
-        if (ma_above_rms && p.bTimeDomainShift) {
+        if (p.bTimeDomainShift) {
             f0BandpassFilter(
                 pBuf + (p.nDelay - 1) * p.frameLen + si, f0Buf + si, fmtTracker->getLatestPitchHz(),
                 static_cast<dtype>(p.sr), p.frameShift);
             timeDomainShifter->processFrame(
-                f0Buf + si, pBuf + (p.nDelay - 1) * p.frameLen + si, outBuf, p.frameShift);
+                f0Buf + si, pBuf + (p.nDelay - 1) * p.frameLen + si, outBuf, p.frameShift, ma_above_rms);
         }
 
 		// data recording

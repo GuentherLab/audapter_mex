@@ -45,6 +45,7 @@ namespace audapter {
 
     void TimeDomainShifter::reset() {
         totalLen = 0;
+        startLen = 0;
         segCount = 0;
         lastPitchFilteredSample = 0.0;
         zcIndices.clear();
@@ -84,7 +85,8 @@ namespace audapter {
     void TimeDomainShifter::processFrame(const dtype* f,
                                          const dtype* x,
                                          dtype* y,
-                                         const int len) {
+                                         const int len,
+                                         const bool above_rms) {
         checkFrameLen(len);
         const int zcCountOld = static_cast<int>(zcIndices.size());
 
@@ -173,7 +175,11 @@ namespace audapter {
 
         segCount++;
         lastPitchFilteredSample = f[len - 1];
+        if (above_rms) {
+            startLen += len;
+        }
         totalLen += len;
+
     }
 
     const int TimeDomainShifter::extractPeakIndex(const bool isMaximum) {
@@ -240,7 +246,7 @@ namespace audapter {
             return 1.0;
         }
 
-        const dtype nowSec = static_cast<dtype>(totalLen) / sr;
+        const dtype nowSec = static_cast<dtype>(startLen) / sr;
         // Find the last interval that nowSec falls into.
         if (nowSec >= pitchShiftSchedule[pitchShiftSchedule.size() - 1].first) {
             return pitchShiftSchedule[pitchShiftSchedule.size() - 1].second;

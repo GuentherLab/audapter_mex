@@ -50,7 +50,8 @@ namespace audapter {
         void processFrame(const dtype* f,
                           const dtype* x,
                           dtype* y,
-                          const int len);
+                          const int len,
+                          const bool above_rms);
 
         dtype getLatestShiftedPitchHz() const;
         int getLatestInputPitchCycleBegin() const;  // DEBUG
@@ -97,6 +98,7 @@ namespace audapter {
         const dtype maxPitchShiftRatio = 1.5;
 
         int totalLen;  // Total length received, in # of signal samples.
+        int startLen;  // Total length after voice onset, in # of signal samples.
         int segCount;  // Counter for the number of segments received.
         dtype lastPitchFilteredSample;
         std::vector<int> zcIndices;  // Zero-crossing indices.
