@@ -96,6 +96,7 @@ public:
 		TYPE_BOOL_ARRAY,
 		TYPE_INT_ARRAY, 
 		TYPE_DOUBLE_ARRAY, 
+		TYPE_DOUBLE_2DARRAY,
 		TYPE_PVOC_WARP, 
 		TYPE_SMN_RMS_FF,
         TYPE_TIME_DOMAIN_PITCH_SHIFT_SCHEDULE,
@@ -133,6 +134,9 @@ public:
     void addDoubleArrayParam(const char* name, const char* helpMsg) {
         addParam(name, helpMsg, TYPE_DOUBLE_ARRAY);
     }
+	void addDouble2DArrayParam(const char* name, const char* helpMsg) {
+		addParam(name, helpMsg, TYPE_DOUBLE_2DARRAY);
+	}
 
 	paramType checkParam(const char *name);
 };
@@ -164,6 +168,9 @@ private:
 	/* Perturbation field */
 	static const int pfNPoints = 257;	/* Number of points in the perturbation field */
 	static const int pfNBit = 8;
+
+	/* Formant clamping (taimComp)*/
+	static const int maxNClampFrames = 2048; /* Number of frames a clamp can persist */
 
 	/* Waveform player */
 	static const int maxPBSize = 230400;			/* Maximum length (samples) for waveform playback */
@@ -455,9 +462,12 @@ private:
 		dtype F1Max;
 		dtype LBk;
 		dtype LBb;
+		dtype pertF1[pfNPoints];
 		dtype pertF2[pfNPoints];		
 		dtype pertPhi[pfNPoints];
 		dtype pertAmp[pfNPoints];
+		dtype pertPhi2D[pfNPoints][pfNPoints];
+		dtype pertAmp2D[pfNPoints][pfNPoints];
 		dtype minVowelLen;
         dtype eqfilterinput_a[nCoeffsSRFilt];
         dtype eqfilterinput_b[nCoeffsSRFilt];
@@ -506,11 +516,21 @@ private:
 		/*SC(2013/04/07) Options to bypass the formant tracker (useful for situations in which lower latency under pitch shifting or time warping is required */
 		int bBypassFmt;
 
+		// Switch for using F1 and F2 formant perturbation, instead of just F2.
+		int bShift2D;
+
 		/* SC (2013-08-06) stereoMode */
 		int stereoMode;		/* 0 - left only; 1 - left-right identical; 2 - left audio + right simulate TTL */
 
 		int bPvocAmpNorm;	/* Pitch vocoder amplitude normalization */		
 		int pvocAmpNormTrans; /* Length of the amplitude normalization factor transitional period */
+
+		/* CWN 2020 formant clamping*/
+		int	bClampFormants;			// use clamped formants piped in from MATLAB as opposed to Audapter-calculated formants // taimComp
+		int clamp_osts[2];			// ix [0] is the OST status which signals, start using clamped formants. ix [1] is OST to stop clamping. // taimComp
+		dtype clamp_f1[maxNClampFrames];	// taimComp
+		dtype clamp_f2[maxNClampFrames];	// taimComp
+
 	} p;
 
 
@@ -537,6 +557,7 @@ private:
 	
 	dtype Audapter::hz2mel(dtype hz);
 	dtype Audapter::mel2hz(dtype hz);
+	dtype Audapter::locateF1(dtype f1);
 	dtype Audapter::locateF2(dtype f2);
 
 	void	DSPF_dp_cfftr2(int n, dtype * x, dtype * w, int n_min);

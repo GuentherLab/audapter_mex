@@ -23,6 +23,7 @@
 *.unsuccessfulbuild
 *.ncb
 *.suo
+*.vs
 ipch/
 obj/
 [Dd]ebug*/
@@ -41,6 +42,10 @@ _ReSharper*/
 
 #Project files
 [Bb]uild/
+
+#Compiled releases, if people want to store those in this folder
+[Cc]ompiled release*/
+[Cc]ompiled mex/
 
 #Subversion files
 .svn

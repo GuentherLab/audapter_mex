@@ -267,7 +267,8 @@ void mexFunction( int nlhs, mxArray *plhs[],
                     nPars = inParSize[0];
                 }
                 else {
-                    mexErrMsgTxt("ERROR: Input parameter is not a scalar or a row or column vector");
+                    //mexErrMsgTxt("ERROR: Input parameter is not a scalar or a row or column vector");
+					nPars = inParSize[0];
                 }
 			}
 
@@ -466,6 +467,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
 			devpar.chans = 1;
 			audio_obj.setdevparams(&devpar,1);
 			devpar.num = activeDeviceNum;
+			devpar.chans = 2; // added for stereo output
 			audio_obj.setdevparams(&devpar,2);
 
 			if (!started) {
@@ -636,7 +638,7 @@ void mexFunction( int nlhs, mxArray *plhs[],
 			break;
 
         case 999:
-            mexPrintf("Audapter version %s\n", audapter::Version::version);
+            mexPrintf("blab-lab fork: Audapter version b2.3. \n");
             break;
 
 		default:
