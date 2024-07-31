@@ -967,6 +967,7 @@ void *Audapter::setGetParam(bool bSet,
 	else if (ns == string("pertphi2d")) {	
 		ptr = (void*)p.pertPhi2D;
 		len = pfNPoints;
+    }
     else if (ns == string("eqfilterinput")) {
 		ptr = (void *)&p.eqfilterinput;
 	}
