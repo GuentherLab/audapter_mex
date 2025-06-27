@@ -60,3 +60,13 @@ packages/
 
 #Test files
 *.testsettings
+.vs/Audapter/v15/Browse.VC.db
+.vs/Audapter/v15/Browse.VC.opendb
+.vs/Audapter/v15/Solution.VC.db
+.vs/Audapter/v15/Solution.VC.db-shm
+.vs/Audapter/v15/Solution.VC.db-wal
+audioIO/audioIO.vcxproj
+TransShiftMex/TransShiftMex.vcxproj
+audioIO/audioIO.vcxproj
+TransShiftMex/TransShiftMex.vcxproj
+audioIO/audioIO.vcxproj
